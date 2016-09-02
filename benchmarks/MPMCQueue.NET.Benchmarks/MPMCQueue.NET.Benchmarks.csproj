@@ -140,10 +140,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConcurrentQueueBenchmarks.cs" />
+    <Compile Include="SingleRunConfig.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="MPMCQueueBenchmarks.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SingleThreadedDequeue.cs" />
+    <Compile Include="SingleThreadedEnqueue.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
