@@ -9,6 +9,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MPMCQueue.NET.Tests", "test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MPMCQueue.NET.Benchmarks", "benchmarks\MPMCQueue.NET.Benchmarks\MPMCQueue.NET.Benchmarks.csproj", "{3656DFA0-84CA-4FB8-8511-70BAC85E5C70}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6BCE76C5-EE1E-4881-9C89-7D77B0E6CA11}"
+	ProjectSection(SolutionItems) = preProject
+		build\build.fsx = build\build.fsx
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
