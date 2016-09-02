@@ -7,17 +7,18 @@ namespace MPMCQueue.NET.Benchmarks
     public class MPMCQueueBenchmarks
     {
         MPMCQueue<int> _queue;
+        private readonly int _bufferSize = 65536;
 
         [Setup]
         public void Setup()
         {
-            _queue = new MPMCQueue<int>();
+            _queue = new MPMCQueue<int>(_bufferSize);
         }
 
         [Benchmark]
         public void EnqueueDequeue()
         {
-            _queue.Enqueue(1);
+            _queue.TryEnqueue(1);
 
             int msg;
             _queue.TryDequeue(out msg);
