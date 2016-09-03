@@ -4,7 +4,7 @@ using MPMCQueue.NET;
 namespace MPMCQueue.NET.Benchmarks
 {
     [Config(typeof(Config))]
-    public class MPMCQueueBenchmarks
+    public class SingleThreadedEnqueueDequeueBenchmark
     {
         MPMCQueue<int> _queue;
         private readonly int _bufferSize = 65536;

@@ -4,7 +4,7 @@ using BenchmarkDotNet.Attributes;
 namespace MPMCQueue.NET.Benchmarks
 {
     [Config(typeof(SingleRunConfig))]
-    public class SingleThreadedEnqueue
+    public class SingleThreadedEnqueueBenchmark
     {
         private const int Operations = 1 << 23;
         MPMCQueue<int> _queue;

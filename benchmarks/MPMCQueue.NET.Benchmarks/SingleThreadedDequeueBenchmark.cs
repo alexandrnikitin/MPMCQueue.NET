@@ -4,7 +4,7 @@ using BenchmarkDotNet.Attributes;
 namespace MPMCQueue.NET.Benchmarks
 {
     [Config(typeof(SingleRunConfig))]
-    public class SingleThreadedDequeue
+    public class SingleThreadedDequeueBenchmark
     {
         private const int Operations = 1 << 23;
         MPMCQueue<int> _queue;
@@ -26,11 +26,7 @@ namespace MPMCQueue.NET.Benchmarks
             for (var i = 0; i < Operations; i++)
             {
                 int item;
-                if (!_queue.TryDequeue(out item))
-                {
-                    throw new Exception();
-                }
-                
+                _queue.TryDequeue(out item);
             }
         }
     }
