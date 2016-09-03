@@ -60,6 +60,7 @@ namespace MPMCQueue.NET
 
             cell.Element = item;
             cell.Sequence = pos + 1;
+            _buffer[pos & _bufferMask] = cell;
             return true;
         }
 
@@ -94,6 +95,7 @@ namespace MPMCQueue.NET
 
             result = cell.Element;
             cell.Sequence = pos + _bufferMask + 1;
+            _buffer[pos & _bufferMask] = cell;
             return true;
         }
 
