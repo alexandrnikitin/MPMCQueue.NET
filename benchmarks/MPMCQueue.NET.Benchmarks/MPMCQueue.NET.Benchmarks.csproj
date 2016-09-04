@@ -140,6 +140,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConcurrentQueueBenchmarks.cs" />
+    <Compile Include="MultiThreadedConcurrentQueue.cs" />
     <Compile Include="MultiThreadedMPMCQueue.cs" />
     <Compile Include="SingleRunConfig.cs" />
     <Compile Include="Config.cs" />
