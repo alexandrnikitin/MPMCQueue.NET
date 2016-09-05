@@ -72,7 +72,7 @@ namespace MPMCQueue.NET.Benchmarks
             return threads;
         }
 
-        [Benchmark(OperationsPerInvoke = Operations/NumberOfThreads)]
+        [Benchmark(OperationsPerInvoke = Operations)]
         public void EnqueueDequeue()
         {
             _reset.Set();
