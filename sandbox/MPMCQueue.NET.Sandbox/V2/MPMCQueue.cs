@@ -33,57 +33,75 @@ namespace MPMCQueue.NET.Sandbox.V2
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryEnqueue(T item)
         {
-            var pos = Interlocked.Increment(ref _enqueuePos);
+            Cell cell;
+            var pos = _enqueuePos;
 
-            var cell = _buffer[pos & _bufferMask];
-            var seq = cell.Sequence;
-            var diff = seq - pos;
-            if (diff == 0)
+            while (true)
             {
-                cell.Element = item;
-                cell.Sequence = pos + 1;
-                _buffer[pos & _bufferMask] = cell;
-                return true;
+                cell = _buffer[pos & _bufferMask];
+                var seq = cell.Sequence;
+                var diff = seq - pos;
+                if (diff == 0)
+                {
+                    if (Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
+                    {
+                        break;
+                    }
+                }
+                else if (diff < 0)
+                {
+                    return false;
+                }
+                else
+                {
+                    pos = _enqueuePos;
+                }
             }
-            else if (diff < 0)
-            {
-                return false;
-            }
-            else
-            {
-                throw new Exception();
-            }
+
+            cell.Element = item;
+            cell.Sequence = pos + 1;
+            _buffer[pos & _bufferMask] = cell;
+            return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryDequeue(out T result)
         {
-            var pos = Interlocked.Increment(ref _dequeuePos);
-
-            do
+            Cell cell;
+            var pos = _dequeuePos;
+            while (true)
             {
-                var cell = _buffer[pos & _bufferMask];
+                cell = _buffer[pos & _bufferMask];
                 var seq = cell.Sequence;
                 var diff = seq - (pos + 1);
-                if (diff == 0)
+                if (diff==0)
                 {
-                    result = cell.Element;
-                    cell.Element = default(T);
-                    cell.Sequence = pos + _bufferMask + 1;
-                    _buffer[pos & _bufferMask] = cell;
-                    return true;
+                    if (Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
+                    {
+                        break;
+                    }
                 }
                 else if (diff < 0)
                 {
                     result = default(T);
                     return false;
                 }
-            } while (true);
+                else
+                {
+                    pos = _dequeuePos;
+                }
+            }
+
+
+            result = cell.Element;
+            cell.Sequence = pos + _bufferMask + 1;
+            _buffer[pos & _bufferMask] = cell;
+            return true;
         }
 
         private struct Cell
         {
-            public int Sequence;
+            public volatile int Sequence;
             public T Element;
         }
     }

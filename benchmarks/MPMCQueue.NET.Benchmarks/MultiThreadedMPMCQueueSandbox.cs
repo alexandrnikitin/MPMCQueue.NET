@@ -13,13 +13,13 @@ namespace MPMCQueue.NET.Benchmarks
         private readonly int _bufferSize = 1 << 25;
         private readonly ManualResetEventSlim _reset = new ManualResetEventSlim(false);
 
-        private MPMCQueue.NET.Sandbox.V3.MPMCQueue<bool> _queue;
+        private MPMCQueue.NET.Sandbox.V2.MPMCQueue<bool> _queue;
         private Thread[] _threads;
 
         [Setup]
         public void Setup()
         {
-            _queue = new MPMCQueue.NET.Sandbox.V3.MPMCQueue<bool>(_bufferSize);
+            _queue = new MPMCQueue.NET.Sandbox.V2.MPMCQueue<bool>(_bufferSize);
             LaunchConsumers(NumberOfThreads);
             _threads = LaunchProducers(Operations, NumberOfThreads);
         }
