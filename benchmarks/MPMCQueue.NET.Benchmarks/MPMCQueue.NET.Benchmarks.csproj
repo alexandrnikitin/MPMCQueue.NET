@@ -141,6 +141,7 @@
   <ItemGroup>
     <Compile Include="ConcurrentQueueBenchmarks.cs" />
     <Compile Include="MultiThreadedConcurrentQueue.cs" />
+    <Compile Include="MultiThreadedMPMCQueueV2.cs" />
     <Compile Include="MultiThreadedMPMCQueue.cs" />
     <Compile Include="SingleRunConfig.cs" />
     <Compile Include="Config.cs" />
@@ -159,6 +160,10 @@
     <Analyzer Include="..\..\packages\Microsoft.CodeAnalysis.Analyzers.1.1.0\analyzers\dotnet\cs\Microsoft.CodeAnalysis.CSharp.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\sandbox\MPMCQueue.NET.Sandbox\MPMCQueue.NET.Sandbox.csproj">
+      <Project>{63acf544-8574-4cc8-9303-6c6d1d3eaee7}</Project>
+      <Name>MPMCQueue.NET.Sandbox</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\MPMCQueue.NET\MPMCQueue.NET.csproj">
       <Project>{52db9f2d-3411-47cf-b467-801c0376d313}</Project>
       <Name>MPMCQueue.NET</Name>
