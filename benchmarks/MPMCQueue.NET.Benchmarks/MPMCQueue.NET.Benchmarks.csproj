@@ -142,7 +142,7 @@
     <Compile Include="ConcurrentQueueBenchmarks.cs" />
     <Compile Include="InterlockedBenchmarks.cs" />
     <Compile Include="MultiThreadedConcurrentQueue.cs" />
-    <Compile Include="MultiThreadedMPMCQueueV2.cs" />
+    <Compile Include="MultiThreadedMPMCQueueSandbox.cs" />
     <Compile Include="MultiThreadedMPMCQueue.cs" />
     <Compile Include="SingleRunConfig.cs" />
     <Compile Include="Config.cs" />
