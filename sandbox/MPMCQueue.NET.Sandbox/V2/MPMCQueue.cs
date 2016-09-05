@@ -33,52 +33,46 @@ namespace MPMCQueue.NET.Sandbox.V2
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryEnqueue(T item)
         {
-            Cell cell;
-            var pos = _enqueuePos;
-
-            while (true)
+            do
             {
-                cell = _buffer[pos & _bufferMask];
+                var pos = _enqueuePos;
+                var cell = _buffer[pos & _bufferMask];
                 var seq = cell.Sequence;
                 var diff = seq - pos;
                 if (diff == 0)
                 {
                     if (Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                     {
-                        break;
+                        cell.Element = item;
+                        cell.Sequence = pos + 1;
+                        _buffer[pos & _bufferMask] = cell;
+                        return true;
                     }
                 }
                 else if (diff < 0)
                 {
                     return false;
                 }
-                else
-                {
-                    pos = _enqueuePos;
-                }
-            }
-
-            cell.Element = item;
-            cell.Sequence = pos + 1;
-            _buffer[pos & _bufferMask] = cell;
-            return true;
+            } while (true);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryDequeue(out T result)
         {
-            Cell cell;
-            var pos = _dequeuePos;
-            while (true)
+            do
             {
-                cell = _buffer[pos & _bufferMask];
+                var pos = _dequeuePos;
+                var cell = _buffer[pos & _bufferMask];
                 var seq = cell.Sequence;
                 var diff = seq - (pos + 1);
-                if (diff==0)
+                if (diff == 0)
                 {
                     if (Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
                     {
-                        break;
+                        result = cell.Element;
+                        cell.Sequence = pos + _bufferMask + 1;
+                        _buffer[pos & _bufferMask] = cell;
+                        return true;
                     }
                 }
                 else if (diff < 0)
@@ -86,17 +80,7 @@ namespace MPMCQueue.NET.Sandbox.V2
                     result = default(T);
                     return false;
                 }
-                else
-                {
-                    pos = _dequeuePos;
-                }
-            }
-
-
-            result = cell.Element;
-            cell.Sequence = pos + _bufferMask + 1;
-            _buffer[pos & _bufferMask] = cell;
-            return true;
+            } while (true);
         }
 
         private struct Cell
