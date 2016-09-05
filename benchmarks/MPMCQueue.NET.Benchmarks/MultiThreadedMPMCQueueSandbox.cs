@@ -1,26 +1,25 @@
 ﻿using System;
 using System.Threading;
 using BenchmarkDotNet.Attributes;
-using MPMCQueue.NET.Sandbox.V2;
 
 namespace MPMCQueue.NET.Benchmarks
 {
     [Config(typeof(SingleRunConfig))]
-    public class MultiThreadedMPMCQueueV2
+    public class MultiThreadedMPMCQueueSandbox
     {
         private const int Operations = 1 << 25;
-        private const int NumberOfThreads = 4;
+        private const int NumberOfThreads = 2;
 
         private readonly int _bufferSize = 1 << 25;
         private readonly ManualResetEventSlim _reset = new ManualResetEventSlim(false);
 
-        private MPMCQueue.NET.Sandbox.V2.MPMCQueue<bool> _queue;
+        private MPMCQueue.NET.Sandbox.V3.MPMCQueue<bool> _queue;
         private Thread[] _threads;
 
         [Setup]
         public void Setup()
         {
-            _queue = new MPMCQueue.NET.Sandbox.V2.MPMCQueue<bool>(_bufferSize);
+            _queue = new MPMCQueue.NET.Sandbox.V3.MPMCQueue<bool>(_bufferSize);
             LaunchConsumers(NumberOfThreads);
             _threads = LaunchProducers(Operations, NumberOfThreads);
         }
