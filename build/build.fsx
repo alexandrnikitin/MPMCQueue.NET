@@ -34,7 +34,7 @@ Target "Build" (fun _ ->
       |> Log "Build-Output: "
 )
 
-Target "BuildTest" (fun _ ->
+Target "BuildTests" (fun _ ->
     !! "../tests/**/*.csproj"
       |> MSBuildDebug buildDir "Build"
       |> Log "TestBuild-Output: "
@@ -58,7 +58,7 @@ Target "AssemblyInfo" (fun _ ->
   ==> "RestorePackages"
   ==> "AssemblyInfo"
   ==> "Build"
-  ==> "BuildTest"
+  ==> "BuildTests"
   ==> "Default"
 
 RunTargetOrDefault "Default"
