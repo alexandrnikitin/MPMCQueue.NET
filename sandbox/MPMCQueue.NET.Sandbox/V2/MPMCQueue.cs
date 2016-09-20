@@ -37,19 +37,16 @@ namespace MPMCQueue.NET.Sandbox.V2
             {
                 var pos = _enqueuePos;
                 var cell = _buffer[pos & _bufferMask];
-                var seq = cell.Sequence;
-                var diff = seq - pos;
-                if (diff == 0)
+                var diff = cell.Sequence - pos;
+                if (diff == 0 && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                 {
-                    if (Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
-                    {
-                        cell.Element = item;
-                        cell.Sequence = pos + 1;
-                        _buffer[pos & _bufferMask] = cell;
-                        return true;
-                    }
+                    cell.Element = item;
+                    cell.Sequence = pos + 1;
+                    _buffer[pos & _bufferMask] = cell;
+                    return true;
                 }
-                else if (diff < 0)
+
+                if (diff <= 0)
                 {
                     return false;
                 }
@@ -63,19 +60,16 @@ namespace MPMCQueue.NET.Sandbox.V2
             {
                 var pos = _dequeuePos;
                 var cell = _buffer[pos & _bufferMask];
-                var seq = cell.Sequence;
-                var diff = seq - (pos + 1);
-                if (diff == 0)
+                var diff = cell.Sequence - (pos + 1);
+                if (diff == 0 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
                 {
-                    if (Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
-                    {
-                        result = cell.Element;
-                        cell.Sequence = pos + _bufferMask + 1;
-                        _buffer[pos & _bufferMask] = cell;
-                        return true;
-                    }
+                    result = cell.Element;
+                    cell.Sequence = pos + _bufferMask + 1;
+                    _buffer[pos & _bufferMask] = cell;
+                    return true;
                 }
-                else if (diff < 0)
+
+                if (diff < 0)
                 {
                     result = default(T);
                     return false;
