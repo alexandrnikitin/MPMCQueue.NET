@@ -42,19 +42,19 @@ namespace MPMCQueue.NET.Sandbox.V3
             do
             {
                 var pos = _enqueuePos;
-                var seq = *(int*)((byte*) _bufferPtr + (pos & _bufferMask)*(SizeOfT + sizeof(int)));
-                var diff = seq - pos;
-                if (diff == 0)
+                var destination = (byte*)_bufferPtr + (pos & _bufferMask)*(SizeOfT + sizeof(int));
+                var seq = *(int*)destination;
+                if (seq - pos == 0)
                 {
                     if (Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                     {
-                        Unsafe.Write((byte*)_bufferPtr + (pos & _bufferMask) * (SizeOfT + sizeof(int)) + sizeof(int), item);
+                        Unsafe.Write(destination + sizeof(int), item);
                         Thread.MemoryBarrier();
-                        Unsafe.Write((byte*)_bufferPtr + (pos & _bufferMask) * (SizeOfT + sizeof(int)), pos + 1);
+                        Unsafe.Write(destination, pos + 1);
                         return true;
                     }
                 }
-                else if (diff < 0)
+                else
                 {
                     return false;
                 }
@@ -67,19 +67,19 @@ namespace MPMCQueue.NET.Sandbox.V3
             do
             {
                 var pos = _dequeuePos;
-                var seq = *(int*)((byte*)_bufferPtr + (pos & _bufferMask) * (SizeOfT + sizeof(int)));
-                var diff = seq - (pos + 1);
-                if (diff == 0)
+                var destination = (byte*)_bufferPtr + (pos & _bufferMask) * (SizeOfT + sizeof(int));
+                var seq = *(int*)destination;
+                if (seq - (pos + 1) == 0)
                 {
                     if (Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
                     {
-                        result = Unsafe.Read<T>((byte*)_bufferPtr + (pos & _bufferMask) * (SizeOfT + sizeof(int)) + sizeof(int));
+                        result = Unsafe.Read<T>(destination + sizeof(int));
                         Thread.MemoryBarrier();
-                        Unsafe.Write((byte*)_bufferPtr + (pos & _bufferMask) * (SizeOfT + sizeof(int)), pos + _bufferMask + 1);
+                        Unsafe.Write(destination, pos + _bufferMask + 1);
                         return true;
                     }
                 }
-                else if (diff < 0)
+                else
                 {
                     result = default(T);
                     return false;
