@@ -15,17 +15,19 @@ namespace MPMCQueue.NET.Benchmarks
 
         private MPMCQueue.NET.Sandbox.V2.MPMCQueue<bool> _queue;
         private Thread[] _threads;
+        private Thread[] _threadsConsumers;
 
         [Setup]
         public void Setup()
         {
             _queue = new MPMCQueue.NET.Sandbox.V2.MPMCQueue<bool>(_bufferSize);
-            LaunchConsumers(NumberOfThreads);
+            _threadsConsumers = LaunchConsumers(NumberOfThreads);
             _threads = LaunchProducers(Operations, NumberOfThreads);
         }
 
-        private void LaunchConsumers(int numberOfThreads)
+        private Thread[] LaunchConsumers(int numberOfThreads)
         {
+            var threads = new Thread[numberOfThreads];
             for (var i = 0; i < numberOfThreads; i++)
             {
                 var thread = new Thread(() =>
@@ -37,7 +39,10 @@ namespace MPMCQueue.NET.Benchmarks
                     }
                 });
                 thread.Start();
+                threads[i] = thread;
             }
+
+            return threads;
         }
 
         private Thread[] LaunchProducers(int numberOfOperations, int numberOfThreads)
@@ -73,6 +78,12 @@ namespace MPMCQueue.NET.Benchmarks
             {
                 _queue.TryEnqueue(false);
             }
+
+            for (var i = 0; i < _threadsConsumers.Length; i++)
+            {
+                _threadsConsumers[i].Join();
+            }
+
         }
     }
 }
