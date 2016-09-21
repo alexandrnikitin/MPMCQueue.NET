@@ -36,17 +36,17 @@ namespace MPMCQueue.NET.Sandbox.V2
             do
             {
                 var pos = _enqueuePos;
-                var cell = _buffer[pos & _bufferMask];
-                var diff = cell.Sequence - pos;
-                if (diff == 0 && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
+                var index = pos & _bufferMask;
+                var cell = _buffer[index];
+                if (cell.Sequence - pos == 0 && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                 {
                     cell.Element = item;
                     cell.Sequence = pos + 1;
-                    _buffer[pos & _bufferMask] = cell;
+                    _buffer[index] = cell;
                     return true;
                 }
 
-                if (diff <= 0)
+                if (cell.Sequence - pos <= 0)
                 {
                     return false;
                 }
@@ -59,17 +59,17 @@ namespace MPMCQueue.NET.Sandbox.V2
             do
             {
                 var pos = _dequeuePos;
-                var cell = _buffer[pos & _bufferMask];
-                var diff = cell.Sequence - (pos + 1);
-                if (diff == 0 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
+                var index = pos & _bufferMask;
+                var cell = _buffer[index];
+                if (cell.Sequence - (pos + 1) == 0 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
                 {
                     result = cell.Element;
                     cell.Sequence = pos + _bufferMask + 1;
-                    _buffer[pos & _bufferMask] = cell;
+                    _buffer[index] = cell;
                     return true;
                 }
 
-                if (diff < 0)
+                if (cell.Sequence - (pos + 1) < 0)
                 {
                     result = default(T);
                     return false;
