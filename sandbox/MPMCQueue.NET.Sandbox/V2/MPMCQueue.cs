@@ -45,7 +45,7 @@ namespace MPMCQueue.NET.Sandbox.V2
                     return true;
                 }
 
-                if (cell.Sequence - pos <= 0)
+                if (cell.Sequence - pos < 0)
                 {
                     return false;
                 }
