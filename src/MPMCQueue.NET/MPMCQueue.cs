@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace MPMCQueue.NET
@@ -15,8 +14,8 @@ namespace MPMCQueue.NET
 
         public MPMCQueue(int bufferSize)
         {
-            if (bufferSize < 2) throw new ArgumentException();
-            if ((bufferSize & (bufferSize - 1)) != 0) throw new ArgumentException();
+            if (bufferSize < 2) throw new ArgumentException($"{nameof(bufferSize)} should be greater than 2");
+            if ((bufferSize & (bufferSize - 1)) != 0) throw new ArgumentException($"{nameof(bufferSize)} should be a power of 2");
 
             _bufferMask = bufferSize - 1;
             _buffer = new Cell[bufferSize];
@@ -30,73 +29,49 @@ namespace MPMCQueue.NET
             _dequeuePos = 0;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryEnqueue(T item)
         {
-            Cell cell;
-            var pos = _enqueuePos;
-
-            while (true)
+            do
             {
-                cell = _buffer[pos & _bufferMask];
-                var seq = cell.Sequence;
-                var diff = seq - pos;
-                if (diff == 0)
+                var pos = _enqueuePos;
+                var index = pos & _bufferMask;
+                var cell = _buffer[index];
+                if (cell.Sequence - pos == 0 && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                 {
-                    if (Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
-                    {
-                        break;
-                    }
+                    cell.Element = item;
+                    cell.Sequence = pos + 1;
+                    _buffer[index] = cell;
+                    return true;
                 }
-                else if (diff < 0)
+
+                if (cell.Sequence - pos < 0)
                 {
                     return false;
                 }
-                else
-                {
-                    pos = _enqueuePos;
-                }
-            }
-
-            cell.Element = item;
-            cell.Sequence = pos + 1;
-            _buffer[pos & _bufferMask] = cell;
-            return true;
+            } while (true);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryDequeue(out T result)
         {
-            Cell cell;
-            var pos = _dequeuePos;
-            while (true)
+            do
             {
-                cell = _buffer[pos & _bufferMask];
-                var seq = cell.Sequence;
-                var diff = seq - (pos + 1);
-                if (diff==0)
+                var pos = _dequeuePos;
+                var index = pos & _bufferMask;
+                var cell = _buffer[index];
+                if (cell.Sequence - (pos + 1) == 0 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
                 {
-                    if (Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
-                    {
-                        break;
-                    }
+                    result = cell.Element;
+                    cell.Sequence = pos + _bufferMask + 1;
+                    _buffer[index] = cell;
+                    return true;
                 }
-                else if (diff < 0)
+
+                if (cell.Sequence - (pos + 1) < 0)
                 {
                     result = default(T);
                     return false;
                 }
-                else
-                {
-                    pos = _dequeuePos;
-                }
-            }
-
-
-            result = cell.Element;
-            cell.Sequence = pos + _bufferMask + 1;
-            _buffer[pos & _bufferMask] = cell;
-            return true;
+            } while (true);
         }
 
         private struct Cell
