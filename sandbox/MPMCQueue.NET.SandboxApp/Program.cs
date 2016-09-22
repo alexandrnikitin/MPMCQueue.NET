@@ -7,7 +7,7 @@ namespace MPMCQueue.NET.SandboxApp
     {
         static void Main(string[] args)
         {
-            var queue = new Sandbox.V2.MPMCQueue<bool>(65536);
+            var queue = new MPMCQueue<bool>(65536);
             Wrapper.Enqueue(queue);
             Wrapper.Dequeue(queue);
             Console.ReadKey();
@@ -18,12 +18,12 @@ namespace MPMCQueue.NET.SandboxApp
     public class Wrapper
     {
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void Enqueue(Sandbox.V2.MPMCQueue<bool> queue)
+        public static void Enqueue(MPMCQueue<bool> queue)
         {
             queue.TryEnqueue(true);
         }
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void Dequeue(Sandbox.V2.MPMCQueue<bool> queue)
+        public static void Dequeue(MPMCQueue<bool> queue)
         {
             bool ret;
             queue.TryDequeue(out ret);
