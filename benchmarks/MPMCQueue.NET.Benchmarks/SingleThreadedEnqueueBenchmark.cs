@@ -1,5 +1,5 @@
-﻿using System;
-using BenchmarkDotNet.Attributes;
+﻿using BenchmarkDotNet.Attributes;
+using MPMCQueue.NET.Benchmarks.Configs;
 
 namespace MPMCQueue.NET.Benchmarks
 {

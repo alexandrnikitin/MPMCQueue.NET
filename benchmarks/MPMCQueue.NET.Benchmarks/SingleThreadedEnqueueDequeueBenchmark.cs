@@ -1,5 +1,5 @@
 ﻿using BenchmarkDotNet.Attributes;
-using MPMCQueue.NET;
+using MPMCQueue.NET.Benchmarks.Configs;
 
 namespace MPMCQueue.NET.Benchmarks
 {

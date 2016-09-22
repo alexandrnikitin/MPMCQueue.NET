@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using BenchmarkDotNet.Attributes;
+using MPMCQueue.NET.Benchmarks.Configs;
 
 namespace MPMCQueue.NET.Benchmarks
 {

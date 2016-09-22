@@ -143,11 +143,10 @@
   <ItemGroup>
     <Compile Include="ConcurrentQueueBenchmarks.cs" />
     <Compile Include="InterlockedBenchmarks.cs" />
-    <Compile Include="MultiThreadedConcurrentQueue.cs" />
-    <Compile Include="MultiThreadedMPMCQueueSandbox.cs" />
-    <Compile Include="MultiThreadedMPMCQueue.cs" />
-    <Compile Include="SingleRunConfig.cs" />
-    <Compile Include="Config.cs" />
+    <Compile Include="MultiThreadedConcurrentQueueBenchmark.cs" />
+    <Compile Include="MultiThreadedMPMCQueueBenchmark.cs" />
+    <Compile Include="Configs\SingleRunConfig.cs" />
+    <Compile Include="Configs\Config.cs" />
     <Compile Include="SingleThreadedEnqueueDequeueBenchmark.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

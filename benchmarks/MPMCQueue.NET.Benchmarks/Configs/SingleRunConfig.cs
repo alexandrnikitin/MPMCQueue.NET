@@ -1,11 +1,11 @@
 ﻿using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
 
-namespace MPMCQueue.NET.Benchmarks
+namespace MPMCQueue.NET.Benchmarks.Configs
 {
-    public class Config : ManualConfig
+    public class SingleRunConfig : ManualConfig
     {
-        public Config()
+        public SingleRunConfig()
         {
             Add(new Job
             {
@@ -14,6 +14,7 @@ namespace MPMCQueue.NET.Benchmarks
                 LaunchCount = 2,
                 WarmupCount = 10,
                 TargetCount = 10,
+                Mode = Mode.SingleRun,
             });
 
             Add(new Job
@@ -23,6 +24,7 @@ namespace MPMCQueue.NET.Benchmarks
                 LaunchCount = 2,
                 WarmupCount = 10,
                 TargetCount = 10,
+                Mode = Mode.SingleRun,
             });
         }
     }

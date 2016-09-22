@@ -1,12 +1,12 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Threading;
 using BenchmarkDotNet.Attributes;
+using MPMCQueue.NET.Benchmarks.Configs;
 
 namespace MPMCQueue.NET.Benchmarks
 {
     [Config(typeof(SingleRunConfig))]
-    public class MultiThreadedConcurrentQueue
+    public class MultiThreadedMPMCQueueBenchmark
     {
         private const int Operations = 1 << 25;
         private const int NumberOfThreads = 2;
@@ -14,30 +14,21 @@ namespace MPMCQueue.NET.Benchmarks
         private readonly int _bufferSize = 1 << 25;
         private readonly ManualResetEventSlim _reset = new ManualResetEventSlim(false);
 
-        private ConcurrentQueue<bool> _queue;
+        private MPMCQueue<bool> _queue;
         private Thread[] _threads;
+        private Thread[] _threadsConsumers;
 
         [Setup]
         public void Setup()
         {
-            _queue = new ConcurrentQueue<bool>();
-
-            for (int i = 0; i < Operations/ NumberOfThreads; i++)
-            {
-                _queue.Enqueue(true);
-            }
-            for (int i = 0; i < Operations/ NumberOfThreads; i++)
-            {
-                bool ret;
-                _queue.TryDequeue(out ret);
-            }
-
-            LaunchConsumers(NumberOfThreads);
+            _queue = new MPMCQueue<bool>(_bufferSize);
+            _threadsConsumers = LaunchConsumers(NumberOfThreads);
             _threads = LaunchProducers(Operations, NumberOfThreads);
         }
 
-        private void LaunchConsumers(int numberOfThreads)
+        private Thread[] LaunchConsumers(int numberOfThreads)
         {
+            var threads = new Thread[numberOfThreads];
             for (var i = 0; i < numberOfThreads; i++)
             {
                 var thread = new Thread(() =>
@@ -49,13 +40,16 @@ namespace MPMCQueue.NET.Benchmarks
                     }
                 });
                 thread.Start();
+                threads[i] = thread;
             }
+
+            return threads;
         }
 
         private Thread[] LaunchProducers(int numberOfOperations, int numberOfThreads)
         {
             var threads = new Thread[numberOfThreads];
-            var opsPerThread = numberOfOperations/numberOfThreads;
+            var opsPerThread = numberOfOperations / numberOfThreads;
             for (var i = 0; i < numberOfThreads; i++)
             {
                 var thread = new Thread(() =>
@@ -63,7 +57,10 @@ namespace MPMCQueue.NET.Benchmarks
                     _reset.Wait();
                     for (var j = 0; j < opsPerThread; j++)
                     {
-                        _queue.Enqueue(true);
+                        if (!_queue.TryEnqueue(true))
+                        {
+                            throw new Exception();
+                        }
                     }
                 });
                 thread.Start();
@@ -83,9 +80,14 @@ namespace MPMCQueue.NET.Benchmarks
 
             for (var i = 0; i < NumberOfThreads * 8; i++)
             {
-                bool result;
-                _queue.TryDequeue(out result);
+                _queue.TryEnqueue(false);
             }
+
+            for (var i = 0; i < _threadsConsumers.Length; i++)
+            {
+                _threadsConsumers[i].Join();
+            }
+
         }
     }
 }

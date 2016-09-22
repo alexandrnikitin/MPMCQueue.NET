@@ -1,5 +1,6 @@
 ﻿using System.Threading;
 using BenchmarkDotNet.Attributes;
+using MPMCQueue.NET.Benchmarks.Configs;
 
 namespace MPMCQueue.NET.Benchmarks
 {
@@ -15,7 +16,7 @@ namespace MPMCQueue.NET.Benchmarks
         }
 
         [Benchmark]
-        public void CAS()
+        public void CompareExchange()
         {
             Interlocked.CompareExchange(ref _counter, _counter + 1, _counter);
         }
