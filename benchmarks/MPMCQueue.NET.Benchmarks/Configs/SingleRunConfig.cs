@@ -1,4 +1,5 @@
 ﻿using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
 
 namespace MPMCQueue.NET.Benchmarks.Configs
@@ -11,9 +12,9 @@ namespace MPMCQueue.NET.Benchmarks.Configs
             {
                 Platform = Platform.X64,
                 Jit = Jit.LegacyJit,
-                LaunchCount = 2,
-                WarmupCount = 10,
-                TargetCount = 10,
+                LaunchCount = 5,
+                WarmupCount = 20,
+                TargetCount = 20,
                 Mode = Mode.SingleRun,
             });
 
@@ -21,11 +22,13 @@ namespace MPMCQueue.NET.Benchmarks.Configs
             {
                 Platform = Platform.X64,
                 Jit = Jit.RyuJit,
-                LaunchCount = 2,
-                WarmupCount = 10,
-                TargetCount = 10,
+                LaunchCount = 5,
+                WarmupCount = 20,
+                TargetCount = 20,
                 Mode = Mode.SingleRun,
             });
+
+            Add(MarkdownExporter.GitHub);
         }
     }
 }

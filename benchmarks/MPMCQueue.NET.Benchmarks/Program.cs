@@ -6,7 +6,8 @@ namespace MPMCQueue.NET.Benchmarks
     {
         static void Main(string[] args)
         {
-            var summary = BenchmarkRunner.Run<MultiThreadedMPMCQueueBenchmark>();
+            BenchmarkRunner.Run<MultiThreadedConcurrentQueueBenchmark>();
+            BenchmarkRunner.Run<MultiThreadedMPMCQueueBenchmark>();
         }
     }
 }
