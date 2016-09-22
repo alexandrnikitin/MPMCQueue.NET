@@ -30,7 +30,6 @@ namespace MPMCQueue.NET.Sandbox.V2
             _dequeuePos = 0;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryEnqueue(T item)
         {
             do
@@ -53,7 +52,6 @@ namespace MPMCQueue.NET.Sandbox.V2
             } while (true);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryDequeue(out T result)
         {
             do
