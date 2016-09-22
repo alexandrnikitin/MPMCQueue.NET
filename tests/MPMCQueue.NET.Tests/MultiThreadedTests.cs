@@ -16,6 +16,8 @@ namespace MPMCQueue.NET.Tests
         private readonly Thread[] _threads;
         private readonly Thread[] _threadsConsumers;
 
+        private bool isFailed = false;
+
         public MultiThreadedTests()
         {
             _queue = new MPMCQueue<bool>(_bufferSize);
@@ -56,7 +58,7 @@ namespace MPMCQueue.NET.Tests
                     {
                         if (!_queue.TryEnqueue(true))
                         {
-                            throw new Exception();
+                            isFailed = true;
                         }
                     }
                 });
@@ -85,6 +87,7 @@ namespace MPMCQueue.NET.Tests
                 _threadsConsumers[i].Join();
             }
 
+            Assert.False(isFailed);
         }
     }
 }
