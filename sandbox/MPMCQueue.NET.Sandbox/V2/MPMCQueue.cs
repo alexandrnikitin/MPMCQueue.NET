@@ -15,8 +15,8 @@ namespace MPMCQueue.NET.Sandbox.V2
 
         public MPMCQueue(int bufferSize)
         {
-            if (bufferSize < 2) throw new ArgumentException();
-            if ((bufferSize & (bufferSize - 1)) != 0) throw new ArgumentException();
+            if (bufferSize < 2) throw new ArgumentException($"{nameof(bufferSize)} should be greater than 2");
+            if ((bufferSize & (bufferSize - 1)) != 0) throw new ArgumentException($"{nameof(bufferSize)} should be a power of 2");
 
             _bufferMask = bufferSize - 1;
             _buffer = new Cell[bufferSize];
