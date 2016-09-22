@@ -56,7 +56,10 @@ namespace MPMCQueue.NET.Benchmarks
                     _reset.Wait();
                     for (var j = 0; j < opsPerThread; j++)
                     {
-                        _queue.TryEnqueue(true);
+                        if (!_queue.TryEnqueue(true))
+                        {
+                            throw new Exception();
+                        }
                     }
                 });
                 thread.Start();
