@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading;
-using MPMCQueue.NET.Sandbox.V4.Padded.Fody;
+using Padded.Fody;
 
 namespace MPMCQueue.NET.Sandbox.V4
 {
