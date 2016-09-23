@@ -8,6 +8,7 @@ namespace MPMCQueue.NET.Benchmarks
         {
             BenchmarkRunner.Run<MultiThreadedConcurrentQueueBenchmark>();
             BenchmarkRunner.Run<MultiThreadedMPMCQueueBenchmark>();
+            BenchmarkRunner.Run<MultiThreadedMPMCQueueSandboxBenchmark>();
         }
     }
 }
