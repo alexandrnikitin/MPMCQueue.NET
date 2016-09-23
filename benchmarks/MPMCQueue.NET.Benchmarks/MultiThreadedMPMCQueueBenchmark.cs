@@ -8,12 +8,12 @@ namespace MPMCQueue.NET.Benchmarks
     [Config(typeof(SingleRunConfig))]
     public class MultiThreadedMPMCQueueBenchmark
     {
-        private const int Operations = 1 << 27;
+        private const int Operations = 1 << 25;
 
         [Params(1, 2, 4, 8, 16, 32)]
         public int NumberOfThreads { get; set; }
 
-        private readonly int _bufferSize = 1 << 27;
+        private readonly int _bufferSize = 1 << 25;
         private readonly ManualResetEventSlim _reset = new ManualResetEventSlim(false);
 
         private MPMCQueue<bool> _queue;

@@ -12,7 +12,7 @@ namespace MPMCQueue.NET.Benchmarks.Configs
             {
                 Platform = Platform.X64,
                 Jit = Jit.LegacyJit,
-                LaunchCount = 5,
+                LaunchCount = 2,
                 WarmupCount = 20,
                 TargetCount = 20,
                 Mode = Mode.SingleRun,
@@ -22,7 +22,7 @@ namespace MPMCQueue.NET.Benchmarks.Configs
             {
                 Platform = Platform.X64,
                 Jit = Jit.RyuJit,
-                LaunchCount = 5,
+                LaunchCount = 2,
                 WarmupCount = 20,
                 TargetCount = 20,
                 Mode = Mode.SingleRun,
