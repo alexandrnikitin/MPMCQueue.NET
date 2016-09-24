@@ -49,7 +49,11 @@ namespace MPMCQueue.NET.Benchmarks
                     var isWorking = true;
                     while (isWorking)
                     {
-                        _queue.TryDequeue(out isWorking);
+                        bool ret;
+                        if (_queue.TryDequeue(out ret))
+                        {
+                            isWorking = ret;
+                        }
                     }
                 });
                 thread.Start();
