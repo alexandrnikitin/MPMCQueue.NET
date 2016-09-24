@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 namespace MPMCQueue.NET.SandboxApp
 {
@@ -7,27 +7,16 @@ namespace MPMCQueue.NET.SandboxApp
     {
         static void Main(string[] args)
         {
-            var queue = new MPMCQueue<bool>(65536);
-            Wrapper.Enqueue(queue);
-            Wrapper.Dequeue(queue);
-            Console.ReadKey();
+            var sut = new MultiThreadedMPMCQueueBenchmark();
+            sut.NumberOfThreads = 4;
+            sut.Setup();
+            var sw = Stopwatch.StartNew();
 
+            sut.EnqueueDequeue();
+            sw.Stop();
+
+            Console.WriteLine(sw.ElapsedMilliseconds);
+            Console.WriteLine(MultiThreadedMPMCQueueBenchmark.Operations);
         }
     }
-
-    public class Wrapper
-    {
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void Enqueue(MPMCQueue<bool> queue)
-        {
-            queue.TryEnqueue(true);
-        }
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void Dequeue(MPMCQueue<bool> queue)
-        {
-            bool ret;
-            queue.TryDequeue(out ret);
-        }
-    }
-
 }
