@@ -7,15 +7,19 @@ namespace MPMCQueue.NET.SandboxApp
     {
         static void Main(string[] args)
         {
-            var sut = new MultiThreadedMPMCQueueBenchmark();
-            sut.NumberOfThreads = 4;
-            sut.Setup();
-            var sw = Stopwatch.StartNew();
+            for (int i = 0; i < 1000; i++)
+            {
+                var sut = new MultiThreadedMPMCQueueBenchmark();
+                sut.NumberOfThreads = 4;
+                sut.Setup();
+                var sw = Stopwatch.StartNew();
 
-            sut.EnqueueDequeue();
-            sw.Stop();
+                sut.EnqueueDequeue();
+                sw.Stop();
 
-            Console.WriteLine(sw.ElapsedMilliseconds);
+                Console.WriteLine(sw.ElapsedMilliseconds);
+
+            }
             Console.WriteLine(MultiThreadedMPMCQueueBenchmark.Operations);
         }
     }

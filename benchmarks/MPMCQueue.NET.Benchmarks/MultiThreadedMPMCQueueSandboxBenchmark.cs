@@ -2,6 +2,7 @@
 using System.Threading;
 using BenchmarkDotNet.Attributes;
 using MPMCQueue.NET.Benchmarks.Configs;
+using SUT = MPMCQueue.NET.Sandbox.V5.MPMCQueue;
 
 namespace MPMCQueue.NET.Benchmarks
 {
@@ -23,14 +24,14 @@ namespace MPMCQueue.NET.Benchmarks
         private readonly int _bufferSize = 1 << 26;
         private readonly ManualResetEventSlim _reset = new ManualResetEventSlim(false);
 
-        private Sandbox.V5.MPMCQueue _queue;
+        private SUT _queue;
         private Thread[] _threads;
         private Thread[] _threadsConsumers;
 
         [Setup]
         public void Setup()
         {
-            _queue = new Sandbox.V5.MPMCQueue(_bufferSize);
+            _queue = new SUT(_bufferSize);
             _threadsConsumers = LaunchConsumers(NumberOfThreads);
             _threads = LaunchProducers(Operations, NumberOfThreads);
         }
