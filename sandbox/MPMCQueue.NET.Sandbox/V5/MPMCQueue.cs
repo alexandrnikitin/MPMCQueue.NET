@@ -43,15 +43,15 @@ namespace MPMCQueue.NET.Sandbox.V5
                 var pos = _enqueuePos;
                 var index = pos & bufferMask;
                 var cell = buffer[index];
-                if (pos == cell.Sequence && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
+                if (cell.Sequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                 {
                     cell.Element = item;
                     cell.Sequence = pos + 1;
                     buffer[index] = cell;
                     return true;
                 }
-
-                if (cell.Sequence - pos < 0)
+                
+                if (cell.Sequence < pos)
                 {
                     return false;
                 }
@@ -67,7 +67,7 @@ namespace MPMCQueue.NET.Sandbox.V5
                 var pos = _dequeuePos;
                 var index = pos & bufferMask;
                 var cell = buffer[index];
-                if (cell.Sequence - (pos + 1) == 0 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
+                if (cell.Sequence == pos + 1 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
                 {
                     result = cell.Element;
                     cell.Sequence = pos + bufferMask + 1;
@@ -75,7 +75,7 @@ namespace MPMCQueue.NET.Sandbox.V5
                     return true;
                 }
 
-                if (cell.Sequence - (pos + 1) < 0)
+                if (cell.Sequence < pos + 1)
                 {
                     result = default(object);
                     return false;
@@ -83,9 +83,12 @@ namespace MPMCQueue.NET.Sandbox.V5
             } while (true);
         }
 
+        [StructLayout(LayoutKind.Explicit, Size = 16, CharSet = CharSet.Ansi)]
         private struct Cell
         {
+            [FieldOffset(0)]
             public volatile int Sequence;
+            [FieldOffset(8)]
             public object Element;
         }
     }
