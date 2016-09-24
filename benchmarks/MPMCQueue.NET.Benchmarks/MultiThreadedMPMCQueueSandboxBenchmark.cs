@@ -17,10 +17,10 @@ namespace MPMCQueue.NET.Benchmarks
         private Message _stopMsg = new Message() { IsWorking = false };
         public const int Operations = 1 << 26;
 
-        [Params(4)]
+        [Params(1, 2, 4)]
         public int NumberOfThreads { get; set; }
 
-        private readonly int _bufferSize = 1 << 25;
+        private readonly int _bufferSize = 1 << 26;
         private readonly ManualResetEventSlim _reset = new ManualResetEventSlim(false);
 
         private Sandbox.V5.MPMCQueue _queue;

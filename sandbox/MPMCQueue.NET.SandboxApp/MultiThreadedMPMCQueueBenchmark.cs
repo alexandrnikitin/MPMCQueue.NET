@@ -17,7 +17,7 @@ namespace MPMCQueue.NET.SandboxApp
 
         public int NumberOfThreads { get; set; }
 
-        private readonly int _bufferSize = 1 << 24;
+        private readonly int _bufferSize = 1 << 25;
         private readonly ManualResetEventSlim _reset = new ManualResetEventSlim(false);
 
         private Sandbox.V5.MPMCQueue _queue;
