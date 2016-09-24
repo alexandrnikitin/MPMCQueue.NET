@@ -93,8 +93,7 @@ namespace MPMCQueue.NET.Benchmarks
 
             for (var i = 0; i < NumberOfThreads * 8; i++)
             {
-                bool result;
-                _queue.TryDequeue(out result);
+                _queue.Enqueue(false);
             }
 
             for (var i = 0; i < _threadsConsumers.Length; i++)
