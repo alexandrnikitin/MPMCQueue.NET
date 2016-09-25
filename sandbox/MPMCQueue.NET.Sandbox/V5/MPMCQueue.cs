@@ -4,13 +4,13 @@ using System.Threading;
 
 namespace MPMCQueue.NET.Sandbox.V5
 {
-    [StructLayout(LayoutKind.Explicit, Size = 132, CharSet = CharSet.Ansi)]
+    [StructLayout(LayoutKind.Explicit, Size = 192, CharSet = CharSet.Ansi)]
     public class MPMCQueue
     {
         [FieldOffset(0)]
         private readonly int _bufferMask;
         [FieldOffset(8)]
-        private readonly Cell[] _buffer;
+        private volatile Cell[] _buffer;
         [FieldOffset(64)]
         private int _enqueuePos;
         [FieldOffset(128)]
@@ -45,9 +45,8 @@ namespace MPMCQueue.NET.Sandbox.V5
                 var cell = buffer[index];
                 if (cell.Sequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                 {
-                    cell.Element = item;
-                    cell.Sequence = pos + 1;
-                    buffer[index] = cell;
+                    buffer[index].Element = item;
+                    buffer[index].Sequence = pos + 1;
                     return true;
                 }
                 
