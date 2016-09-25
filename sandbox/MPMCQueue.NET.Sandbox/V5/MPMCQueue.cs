@@ -70,6 +70,7 @@ namespace MPMCQueue.NET.Sandbox.V5
                 {
                     result = cell.Element;
                     cell.Sequence = pos + bufferMask + 1;
+                    cell.Element = null;
                     buffer[index] = cell;
                     return true;
                 }
