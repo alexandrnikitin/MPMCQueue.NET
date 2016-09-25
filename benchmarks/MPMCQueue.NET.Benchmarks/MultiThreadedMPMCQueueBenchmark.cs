@@ -2,13 +2,16 @@
 using System.Threading;
 using BenchmarkDotNet.Attributes;
 using MPMCQueue.NET.Benchmarks.Configs;
+using SUT = MPMCQueue.NET.MPMCQueue;
 
 namespace MPMCQueue.NET.Benchmarks
 {
     [Config(typeof(SingleRunConfig))]
     public class MultiThreadedMPMCQueueBenchmark
     {
-        private const int Operations = 1 << 25;
+        private Message _msg = new Message() { IsWorking = true };
+        private Message _stopMsg = new Message() { IsWorking = false };
+        public const int Operations = 1 << 25;
 
         [Params(1, 2, 4, 8, 16, 32)]
         public int NumberOfThreads { get; set; }
@@ -16,14 +19,14 @@ namespace MPMCQueue.NET.Benchmarks
         private readonly int _bufferSize = 1 << 25;
         private readonly ManualResetEventSlim _reset = new ManualResetEventSlim(false);
 
-        private MPMCQueue<bool> _queue;
+        private SUT _queue;
         private Thread[] _threads;
         private Thread[] _threadsConsumers;
 
         [Setup]
         public void Setup()
         {
-            _queue = new MPMCQueue<bool>(_bufferSize);
+            _queue = new SUT(_bufferSize);
             _threadsConsumers = LaunchConsumers(NumberOfThreads);
             _threads = LaunchProducers(Operations, NumberOfThreads);
         }
@@ -38,10 +41,10 @@ namespace MPMCQueue.NET.Benchmarks
                     var isWorking = true;
                     while (isWorking)
                     {
-                        bool ret;
+                        object ret;
                         if (_queue.TryDequeue(out ret))
                         {
-                            isWorking = ret;
+                            isWorking = ((Message)ret).IsWorking;
                         }
                     }
                 });
@@ -63,7 +66,7 @@ namespace MPMCQueue.NET.Benchmarks
                     _reset.Wait();
                     for (var j = 0; j < opsPerThread; j++)
                     {
-                        if (!_queue.TryEnqueue(true))
+                        if (!_queue.TryEnqueue(_msg))
                         {
                             throw new Exception();
                         }
@@ -86,14 +89,13 @@ namespace MPMCQueue.NET.Benchmarks
 
             for (var i = 0; i < NumberOfThreads * 8; i++)
             {
-                _queue.TryEnqueue(false);
+                _queue.TryEnqueue(_stopMsg);
             }
 
             for (var i = 0; i < _threadsConsumers.Length; i++)
             {
                 _threadsConsumers[i].Join();
             }
-
         }
     }
 }

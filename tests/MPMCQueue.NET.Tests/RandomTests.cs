@@ -4,11 +4,11 @@ namespace MPMCQueue.NET.Tests
 {
     public class RandomTests
     {
-        private readonly MPMCQueue<int> _queue;
+        private readonly MPMCQueue _queue;
 
         public RandomTests()
         {
-            _queue = new MPMCQueue<int>(65536);
+            _queue = new MPMCQueue(65536);
         }
 
         [Fact]
@@ -17,7 +17,7 @@ namespace MPMCQueue.NET.Tests
             _queue.TryEnqueue(1);
             _queue.TryEnqueue(2);
             _queue.TryEnqueue(3);
-            int actual;
+            object actual;
             _queue.TryDequeue(out actual);
             Assert.Equal(1, actual);
 

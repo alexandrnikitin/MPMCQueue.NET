@@ -6,13 +6,16 @@ namespace MPMCQueue.NET.Tests
 {
     public class MultiThreadedTests
     {
+        private Message _msg = new Message() { IsWorking = true };
+        private Message _stopMsg = new Message() { IsWorking = false };
+
         private const int Operations = 1 << 25;
         private const int NumberOfThreads = 2;
 
         private readonly int _bufferSize = 1 << 25;
         private readonly ManualResetEventSlim _reset = new ManualResetEventSlim(false);
 
-        private readonly MPMCQueue<bool> _queue;
+        private readonly MPMCQueue _queue;
         private readonly Thread[] _threads;
         private readonly Thread[] _threadsConsumers;
 
@@ -20,7 +23,7 @@ namespace MPMCQueue.NET.Tests
 
         public MultiThreadedTests()
         {
-            _queue = new MPMCQueue<bool>(_bufferSize);
+            _queue = new MPMCQueue(_bufferSize);
             _threadsConsumers = LaunchConsumers(NumberOfThreads);
             _threads = LaunchProducers(Operations, NumberOfThreads);
         }
@@ -35,10 +38,10 @@ namespace MPMCQueue.NET.Tests
                     var isWorking = true;
                     while (isWorking)
                     {
-                        bool ret;
+                        object ret;
                         if (_queue.TryDequeue(out ret))
                         {
-                            isWorking = ret;
+                            isWorking = ((Message)ret).IsWorking;
                         }
                     }
                 });
@@ -60,7 +63,7 @@ namespace MPMCQueue.NET.Tests
                     _reset.Wait();
                     for (var j = 0; j < opsPerThread; j++)
                     {
-                        if (!_queue.TryEnqueue(true))
+                        if (!_queue.TryEnqueue(_msg))
                         {
                             isFailed = true;
                         }
@@ -83,7 +86,7 @@ namespace MPMCQueue.NET.Tests
 
             for (var i = 0; i < NumberOfThreads * 8; i++)
             {
-                _queue.TryEnqueue(false);
+                _queue.TryEnqueue(_stopMsg);
             }
 
             for (var i = 0; i < _threadsConsumers.Length; i++)

@@ -6,22 +6,23 @@ namespace MPMCQueue.NET.Benchmarks
     [Config(typeof(Config))]
     public class SingleThreadedEnqueueDequeueBenchmark
     {
-        MPMCQueue<int> _queue;
+        private readonly object _obj = new object();
+        MPMCQueue _queue;
         private readonly int _bufferSize = 65536;
 
         [Setup]
         public void Setup()
         {
-            _queue = new MPMCQueue<int>(_bufferSize);
+            _queue = new MPMCQueue(_bufferSize);
         }
 
         [Benchmark]
         public void EnqueueDequeue()
         {
-            _queue.TryEnqueue(1);
+            _queue.TryEnqueue(_obj);
 
-            int msg;
-            _queue.TryDequeue(out msg);
+            object ret;
+            _queue.TryDequeue(out ret);
         }
     }
 }
