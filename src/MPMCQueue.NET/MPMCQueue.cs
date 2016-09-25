@@ -1,14 +1,19 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace MPMCQueue.NET
 {
-    public class MPMCQueue<T>
+    [StructLayout(LayoutKind.Explicit, Size = 192, CharSet = CharSet.Ansi)]
+    public class MPMCQueue
     {
-        private readonly Cell[] _buffer;
+        [FieldOffset(0)]
         private readonly int _bufferMask;
-
+        [FieldOffset(8)]
+        private volatile Cell[] _buffer;
+        [FieldOffset(64)]
         private int _enqueuePos;
+        [FieldOffset(128)]
         private int _dequeuePos;
 
 
@@ -29,55 +34,62 @@ namespace MPMCQueue.NET
             _dequeuePos = 0;
         }
 
-        public bool TryEnqueue(T item)
+        public bool TryEnqueue(object item)
         {
             do
             {
+                var bufferMask = _bufferMask;
+                var buffer = _buffer;
                 var pos = _enqueuePos;
-                var index = pos & _bufferMask;
-                var cell = _buffer[index];
-                if (cell.Sequence - pos == 0 && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
+                var index = pos & bufferMask;
+                var cell = buffer[index];
+                if (cell.Sequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                 {
-                    cell.Element = item;
-                    cell.Sequence = pos + 1;
-                    _buffer[index] = cell;
+                    buffer[index].Element = item;
+                    buffer[index].Sequence = pos + 1;
                     return true;
                 }
 
-                if (cell.Sequence - pos < 0)
+                if (cell.Sequence < pos)
                 {
                     return false;
                 }
             } while (true);
         }
 
-        public bool TryDequeue(out T result)
+        public bool TryDequeue(out object result)
         {
             do
             {
+                var bufferMask = _bufferMask;
+                var buffer = _buffer;
                 var pos = _dequeuePos;
-                var index = pos & _bufferMask;
-                var cell = _buffer[index];
-                if (cell.Sequence - (pos + 1) == 0 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
+                var index = pos & bufferMask;
+                var cell = buffer[index];
+                if (cell.Sequence == pos + 1 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
                 {
                     result = cell.Element;
-                    cell.Sequence = pos + _bufferMask + 1;
-                    _buffer[index] = cell;
+                    cell.Sequence = pos + bufferMask + 1;
+                    cell.Element = null;
+                    buffer[index] = cell;
                     return true;
                 }
 
-                if (cell.Sequence - (pos + 1) < 0)
+                if (cell.Sequence < pos + 1)
                 {
-                    result = default(T);
+                    result = default(object);
                     return false;
                 }
             } while (true);
         }
 
+        [StructLayout(LayoutKind.Explicit, Size = 16, CharSet = CharSet.Ansi)]
         private struct Cell
         {
+            [FieldOffset(0)]
             public volatile int Sequence;
-            public T Element;
+            [FieldOffset(8)]
+            public object Element;
         }
     }
 }
