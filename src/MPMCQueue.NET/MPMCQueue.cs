@@ -10,7 +10,7 @@ namespace MPMCQueue.NET
         [FieldOffset(0)]
         private readonly int _bufferMask;
         [FieldOffset(8)]
-        private volatile Cell[] _buffer;
+        private readonly Cell[] _buffer;
         [FieldOffset(64)]
         private int _enqueuePos;
         [FieldOffset(128)]
@@ -27,7 +27,7 @@ namespace MPMCQueue.NET
 
             for (var i = 0; i < bufferSize; i++)
             {
-                _buffer[i].Sequence = i;
+                _buffer[i] = new Cell(i, null);
             }
 
             _enqueuePos = 0;
@@ -45,8 +45,7 @@ namespace MPMCQueue.NET
                 var cell = buffer[index];
                 if (cell.Sequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                 {
-                    buffer[index].Element = item;
-                    buffer[index].Sequence = pos + 1;
+                    buffer[index] = new Cell(pos + 1, item);
                     return true;
                 }
 
@@ -68,10 +67,8 @@ namespace MPMCQueue.NET
                 var cell = buffer[index];
                 if (cell.Sequence == pos + 1 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
                 {
+                    buffer[index] = new Cell(pos + bufferMask + 1, null);
                     result = cell.Element;
-                    cell.Sequence = pos + bufferMask + 1;
-                    cell.Element = null;
-                    buffer[index] = cell;
                     return true;
                 }
 
@@ -87,9 +84,15 @@ namespace MPMCQueue.NET
         private struct Cell
         {
             [FieldOffset(0)]
-            public volatile int Sequence;
+            public readonly int Sequence;
             [FieldOffset(8)]
-            public object Element;
+            public readonly object Element;
+
+            public Cell(int sequence, object element)
+            {
+                Sequence = sequence;
+                Element = element;
+            }
         }
     }
 }
