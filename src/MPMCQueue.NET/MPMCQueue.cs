@@ -8,9 +8,9 @@ namespace MPMCQueue.NET
     public class MPMCQueue
     {
         [FieldOffset(0)]
-        private readonly int _bufferMask;
-        [FieldOffset(8)]
         private readonly Cell[] _buffer;
+        [FieldOffset(8)]
+        private readonly int _bufferMask;
         [FieldOffset(64)]
         private int _enqueuePos;
         [FieldOffset(128)]
@@ -38,10 +38,9 @@ namespace MPMCQueue.NET
         {
             do
             {
-                var bufferMask = _bufferMask;
                 var buffer = _buffer;
                 var pos = _enqueuePos;
-                var index = pos & bufferMask;
+                var index = pos & _bufferMask;
                 var cell = buffer[index];
                 if (cell.Sequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                 {
@@ -60,8 +59,8 @@ namespace MPMCQueue.NET
         {
             do
             {
-                var bufferMask = _bufferMask;
                 var buffer = _buffer;
+                var bufferMask = _bufferMask;
                 var pos = _dequeuePos;
                 var index = pos & bufferMask;
                 var cell = buffer[index];
