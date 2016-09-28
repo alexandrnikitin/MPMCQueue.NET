@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using MPMCQueue.NET.Benchmarks;
 
 namespace MPMCQueue.NET.SandboxApp
 {
@@ -10,7 +11,7 @@ namespace MPMCQueue.NET.SandboxApp
             for (int i = 0; i < 1000; i++)
             {
                 var sut = new MultiThreadedMPMCQueueBenchmark();
-                sut.NumberOfThreads = 4;
+                sut.NumberOfThreads = 2;
                 sut.Setup();
                 var sw = Stopwatch.StartNew();
 
@@ -18,6 +19,8 @@ namespace MPMCQueue.NET.SandboxApp
                 sw.Stop();
 
                 Console.WriteLine(sw.ElapsedMilliseconds);
+
+                //Console.ReadKey();
 
             }
             Console.WriteLine(MultiThreadedMPMCQueueBenchmark.Operations);

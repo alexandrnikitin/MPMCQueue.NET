@@ -45,7 +45,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="MultiThreadedMPMCQueueBenchmark.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -53,6 +52,10 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\benchmarks\MPMCQueue.NET.Benchmarks\MPMCQueue.NET.Benchmarks.csproj">
+      <Project>{185d20d4-578e-4d4d-a22f-9e659e445f0c}</Project>
+      <Name>MPMCQueue.NET.Benchmarks</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\MPMCQueue.NET\MPMCQueue.NET.csproj">
       <Project>{52db9f2d-3411-47cf-b467-801c0376d313}</Project>
       <Name>MPMCQueue.NET</Name>
