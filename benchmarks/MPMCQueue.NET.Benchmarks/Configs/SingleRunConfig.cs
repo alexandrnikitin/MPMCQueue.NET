@@ -11,16 +11,6 @@ namespace MPMCQueue.NET.Benchmarks.Configs
             Add(new Job
             {
                 Platform = Platform.X64,
-                Jit = Jit.LegacyJit,
-                LaunchCount = 2,
-                WarmupCount = 20,
-                TargetCount = 20,
-                Mode = Mode.SingleRun,
-            });
-
-            Add(new Job
-            {
-                Platform = Platform.X64,
                 Jit = Jit.RyuJit,
                 LaunchCount = 2,
                 WarmupCount = 20,
