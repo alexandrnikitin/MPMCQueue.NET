@@ -44,7 +44,8 @@ namespace MPMCQueue.NET
                 var cell = buffer[index];
                 if (cell.Sequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                 {
-                    buffer[index] = new Cell(pos + 1, item);
+                    Volatile.Write(ref buffer[index].Element, item);
+                    buffer[index].Sequence = pos + 1;
                     return true;
                 }
 
@@ -66,8 +67,8 @@ namespace MPMCQueue.NET
                 var cell = buffer[index];
                 if (cell.Sequence == pos + 1 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
                 {
+                    result = Volatile.Read(ref cell.Element);
                     buffer[index] = new Cell(pos + bufferMask + 1, null);
-                    result = cell.Element;
                     return true;
                 }
 
@@ -83,9 +84,9 @@ namespace MPMCQueue.NET
         private struct Cell
         {
             [FieldOffset(0)]
-            public readonly int Sequence;
+            public int Sequence;
             [FieldOffset(8)]
-            public readonly object Element;
+            public object Element;
 
             public Cell(int sequence, object element)
             {
