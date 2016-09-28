@@ -13,7 +13,8 @@ namespace MPMCQueue.NET.Benchmarks
 
         private const int Operations = 1 << 24;
 
-        [Params(1, 2, 4, 8, 16, 32)]
+        //[Params(1, 2, 4, 8, 16, 32)]
+        [Params(1, 2, 4)]
         public int NumberOfThreads { get; set; }
 
 
