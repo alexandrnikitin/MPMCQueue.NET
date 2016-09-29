@@ -101,7 +101,37 @@ public bool TryDequeue(out object result)
 
 ### Benchmarks
 
-TBA
+```ini
+Host Process Environment Information:
+BenchmarkDotNet.Core=v0.9.9.0
+OS=Microsoft Windows NT 6.2.9200.0
+Processor=Intel(R) Xeon(R) CPU E5-2630 v3 2.40GHzIntel(R) Xeon(R) CPU E5-2630 v3 2.40GHz, ProcessorCount=16
+Frequency=2341039 ticks, Resolution=427.1608 ns, Timer=TSC
+CLR=MS.NET 4.0.30319.42000, Arch=64-bit RELEASE [RyuJIT]
+GC=Concurrent Workstation
+JitModules=clrjit-v4.6.1590.0
+```
+
+`MPMCQueue.NET.MPMCQueue`
+
+Method | NumberOfThreads |      Median |     StdDev |
+--------------- |---------------- |------------ |----------- |
+**EnqueueDequeue** |               **1** |  **33.8924 ns** |  **9.4806 ns** |
+**EnqueueDequeue** |               **2** | **123.5304 ns** | **21.1472 ns** |
+**EnqueueDequeue** |               **4** | **199.4333 ns** | **10.0178 ns** |
+**EnqueueDequeue** |               **8** | **234.0404 ns** |  **6.4542 ns** |
+**EnqueueDequeue** |              **16** | **121.2204 ns** | **21.0024 ns** |
+
+`System.Collections.Concurrent.ConcurrentQueue`
+
+         Method | NumberOfThreads |      Median |    StdDev |
+--------------- |---------------- |------------ |---------- |
+ **EnqueueDequeue** |               **1** |  **36.1605 ns** | **0.4909 ns** |
+ **EnqueueDequeue** |               **2** |  **95.6493 ns** | **1.9413 ns** |
+ **EnqueueDequeue** |               **4** | **102.2402 ns** | **2.4507 ns** |
+ **EnqueueDequeue** |               **8** | **118.2270 ns** | **2.7861 ns** |
+ **EnqueueDequeue** |              **16** | **126.1636 ns** | **7.9490 ns** |
+
 
 ### Assembly
 
