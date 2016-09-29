@@ -129,6 +129,7 @@ Method | NumberOfThreads |     Median |    StdDev |
 **EnqueueDequeue** |               **2** | **72.1948 ns** | **2.8465 ns** |
 **EnqueueDequeue** |               **4** | **63.6846 ns** | **3.6718 ns** |
 
+_`MPMCQueue` show worse than `ConcurrentQueue` results on multi socket CPU systems_
 
 ### Assembly
 
