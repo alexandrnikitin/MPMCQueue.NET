@@ -12,7 +12,7 @@ This is an attempt to port [the famous Bounded MPMC queue algorithm by Dmitry Vy
 
 ### Implementation
 
-The queue class layout is shown below. The `_buffer` field stores enqueued elements and their sequences. It has size that is a power of two. The `_bufferMask` field is used to avoid the expensive modulo operation and use AND instead. There's padding applied to avoid [false sharing][false-sharing] of `_enqueuePos` and `_dequeuePos`.
+The queue class layout is shown below. The `_buffer` field stores enqueued elements and their sequences. It has size that is a power of two. The `_bufferMask` field is used to avoid the expensive modulo operation and use `AND` instead. There's padding applied to avoid [false sharing][false-sharing] of `_enqueuePos` and `_dequeuePos` counters.
 
 ```csharp
 [StructLayout(LayoutKind.Explicit, Size = 192, CharSet = CharSet.Ansi)]
