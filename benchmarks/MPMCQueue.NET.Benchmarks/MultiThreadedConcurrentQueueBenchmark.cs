@@ -11,7 +11,7 @@ namespace MPMCQueue.NET.Benchmarks
         private readonly Message _msg = new Message() { IsWorking = true };
         private readonly Message _stopMsg = new Message() { IsWorking = false };
 
-        private const int Operations = 1 << 24;
+        private const int Operations = 1 << 26;
 
         //[Params(1, 2, 4, 8, 16, 32)]
         [Params(1, 2, 4)]

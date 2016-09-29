@@ -11,13 +11,13 @@ namespace MPMCQueue.NET.Benchmarks
     {
         private readonly Message _msg = new Message() { IsWorking = true };
         private readonly Message _stopMsg = new Message() { IsWorking = false };
-        public const int Operations = 1 << 25;
+        public const int Operations = 1 << 26;
 
         //[Params(1, 2, 4, 8, 16, 32)]
         [Params(1, 2, 4)]
         public int NumberOfThreads { get; set; }
 
-        private readonly int _bufferSize = 1 << 25;
+        private readonly int _bufferSize = 1 << 26;
         private readonly ManualResetEventSlim _reset = new ManualResetEventSlim(false);
 
         private SUT _queue;
