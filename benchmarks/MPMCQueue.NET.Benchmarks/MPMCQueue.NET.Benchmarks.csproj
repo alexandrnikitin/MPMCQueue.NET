@@ -145,6 +145,7 @@
     <Compile Include="ConcurrentQueueBenchmarks.cs" />
     <Compile Include="InterlockedBenchmarks.cs" />
     <Compile Include="MultiThreadedConcurrentQueueBenchmark.cs" />
+    <Compile Include="MultiThreadedMPMCQueueSandboxBenchmark.cs" />
     <Compile Include="MultiThreadedMPMCQueueBenchmark.cs" />
     <Compile Include="Configs\SingleRunConfig.cs" />
     <Compile Include="Configs\Config.cs" />
