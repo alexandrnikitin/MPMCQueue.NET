@@ -131,7 +131,7 @@ Method | NumberOfThreads |     Median |    StdDev |
 
 _`MPMCQueue` show worse than `ConcurrentQueue` results on multi socket CPU systems_
 
-### Assembly
+### Assembly (RyuJIT x64, clrjit-v4.6.1586.0)
 
 `MPMCQueue.NET.MPMCQueue.TryEnqueue(System.Object)`
 
