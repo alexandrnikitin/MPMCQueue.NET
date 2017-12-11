@@ -129,7 +129,7 @@ Method | NumberOfThreads |     Median |    StdDev |
 **EnqueueDequeue** |               **2** | **72.1948 ns** | **2.8465 ns** |
 **EnqueueDequeue** |               **4** | **63.6846 ns** | **3.6718 ns** |
 
-_`MPMCQueue` show worse than `ConcurrentQueue` results on multi socket CPU systems_
+_`MPMCQueue` shows worse than `ConcurrentQueue` results on many core and multi socket CPUs systems because `cmpxchg` instruction doesn't scale well, [read more](http://joeduffyblog.com/2009/01/08/some-performance-implications-of-cas-operations/)_
 
 ### Assembly (RyuJIT x64, clrjit-v4.6.1586.0)
 
