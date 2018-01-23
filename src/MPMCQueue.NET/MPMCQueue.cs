@@ -19,7 +19,7 @@ namespace MPMCQueue.NET
 
         public MPMCQueue(int bufferSize)
         {
-            if (bufferSize < 2) throw new ArgumentException($"{nameof(bufferSize)} should be greater than 2");
+            if (bufferSize < 2) throw new ArgumentException($"{nameof(bufferSize)} should be greater than or equal to 2");
             if ((bufferSize & (bufferSize - 1)) != 0) throw new ArgumentException($"{nameof(bufferSize)} should be a power of 2");
 
             _bufferMask = bufferSize - 1;
