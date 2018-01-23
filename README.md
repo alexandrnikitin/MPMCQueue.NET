@@ -12,7 +12,7 @@ This is an attempt to port [the famous Bounded MPMC queue algorithm by Dmitry Vy
 
 ### Implementation
 
-The queue class layout is shown below. The `_buffer` field stores enqueued elements and their sequences. It has size that is a power of two. The `_bufferMask` field is used to avoid the expensive modulo operation and use `AND` instead. There's padding applied to avoid [false sharing][false-sharing] of `_enqueuePos` and `_dequeuePos` counters.
+The queue class layout is shown below. The `_buffer` field stores enqueued elements and their sequences. It has size that is a power of two. The `_bufferMask` field is used to avoid the expensive modulo operation and use `AND` instead. There's padding applied to avoid [false sharing][false-sharing] of `_enqueuePos` and `_dequeuePos` counters. And [Volatile.Read/Write to suppress memory instructions reordering when read/write cell.Sequence][memory-barriers-in-dot-net].
 
 ```csharp
 [StructLayout(LayoutKind.Explicit, Size = 192, CharSet = CharSet.Ansi)]
@@ -34,69 +34,71 @@ public class MPMCQueue
 The enqueue algorithm:
 
 ```csharp
+
 public bool TryEnqueue(object item)
 {
     do
     {
-        var buffer = _buffer; // prefetch the buffer pointer
         var pos = _enqueuePos; // fetch the current position where to enqueue the item
         var index = pos & _bufferMask; // precalculate the index in the buffer for that position
-        var cell = buffer[index]; // fetch the cell by the index
+        var cellSequence = _buffer[index].Sequence;
         // If its sequence wasn't touched by other producers
         // and we can increment the enqueue position
-        if (cell.Sequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
+        if (cellSequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
         {
             // write the item we want to enqueue
-            Volatile.Write(ref buffer[index].Element, item);
+            _buffer[index].Element = item;
             // bump the sequence
-            buffer[index].Sequence = pos + 1;
+            Volatile.Write(ref _buffer[index].Sequence, pos + 1); // release fence
             return true;
         }
 
         // If the queue is full we cannot enqueue and just return false
-        if (cell.Sequence < pos)
+        if (cellSequence < pos)
         {
             return false;
         }
-
         // repeat the process if other producer managed to enqueue before us
     } while (true);
 }
+
 ```
 
 The dequeue algorithm:
 
 ```csharp
+
 public bool TryDequeue(out object result)
 {
     do
     {
-        var buffer = _buffer; // prefetch the buffer pointer
-        var bufferMask = _bufferMask; // prefetch the buffer mask
         var pos = _dequeuePos; // fetch the current position from where we can dequeue an item
-        var index = pos & bufferMask; // precalculate the index in the buffer for that position
-        var cell = buffer[index]; // fetch the cell by the index
+        var index = pos & _bufferMask; // precalculate the index in the buffer for that position
+        var cellSequence = _buffer[index].Sequence;
         // If its sequence was changed by a producer and wasn't changed by other consumers
         // and we can increment the dequeue position
-        if (cell.Sequence == pos + 1 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
+        if (cellSequence == pos + 1 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
         {
             // read the item
-            result = Volatile.Read(ref cell.Element);
+            result = _buffer[index].Element;
+            _buffer[index].Element = null; // no more reference the dequeue data
+            // result = Interlocked.Exchange(ref _buffer[index].Element, null); // maybe no need use this expensive atomic op, since we don't need ensure atomic here
+
             // update for the next round of the buffer
-            buffer[index] = new Cell(pos + bufferMask + 1, null);
+            Volatile.Write(ref _buffer[index].Sequence, pos + _bufferMask + 1); // release fence
             return true;
         }
 
         // If the queue is empty return false
-        if (cell.Sequence < pos + 1)
+        if (cellSequence < pos + 1)
         {
-            result = default(object);
+            result = null;
             return false;
         }
-
         // repeat the process if other consumer managed to dequeue before us
     } while (true);
 }
+
 ```
 
 ### Benchmarks
@@ -253,3 +255,4 @@ _`MPMCQueue` shows worse than `ConcurrentQueue` results on many core and multi s
 
   [1024-mpmc]: http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
   [false-sharing]: http://mechanical-sympathy.blogspot.lt/2011/07/false-sharing.html
+  [memory-barriers-in-dot-net]: http://afana.me/archive/2015/07/10/memory-barriers-in-dot-net.aspx/
