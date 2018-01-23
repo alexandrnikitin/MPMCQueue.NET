@@ -12,7 +12,7 @@ This is an attempt to port [the famous Bounded MPMC queue algorithm by Dmitry Vy
 
 ### Implementation
 
-The queue class layout is shown below. The `_buffer` field stores enqueued elements and their sequences. It has size that is a power of two. The `_bufferMask` field is used to avoid the expensive modulo operation and use `AND` instead. There's padding applied to avoid [false sharing][false-sharing] of `_enqueuePos` and `_dequeuePos` counters.
+The queue class layout is shown below. The `_buffer` field stores enqueued elements and their sequences. It has size that is a power of two. The `_bufferMask` field is used to avoid the expensive modulo operation and use `AND` instead. There's padding applied to avoid [false sharing][false-sharing] of `_enqueuePos` and `_dequeuePos` counters. And [Volatile.Read/Write to suppress memory instructions reordering when read/write cell.Sequence][memory-barriers-in-dot-net].
 
 ```csharp
 [StructLayout(LayoutKind.Explicit, Size = 192, CharSet = CharSet.Ansi)]
@@ -34,69 +34,71 @@ public class MPMCQueue
 The enqueue algorithm:
 
 ```csharp
+
 public bool TryEnqueue(object item)
 {
     do
     {
-        var buffer = _buffer; // prefetch the buffer pointer
         var pos = _enqueuePos; // fetch the current position where to enqueue the item
         var index = pos & _bufferMask; // precalculate the index in the buffer for that position
-        var cell = buffer[index]; // fetch the cell by the index
+        var cellSequence = _buffer[index].Sequence;
         // If its sequence wasn't touched by other producers
         // and we can increment the enqueue position
-        if (cell.Sequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
+        if (cellSequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
         {
             // write the item we want to enqueue
-            Volatile.Write(ref buffer[index].Element, item);
+            _buffer[index].Element = item;
             // bump the sequence
-            buffer[index].Sequence = pos + 1;
+            Volatile.Write(ref _buffer[index].Sequence, pos + 1); // release fence
             return true;
         }
 
         // If the queue is full we cannot enqueue and just return false
-        if (cell.Sequence < pos)
+        if (cellSequence < pos)
         {
             return false;
         }
-
         // repeat the process if other producer managed to enqueue before us
     } while (true);
 }
+
 ```
 
 The dequeue algorithm:
 
 ```csharp
+
 public bool TryDequeue(out object result)
 {
     do
     {
-        var buffer = _buffer; // prefetch the buffer pointer
-        var bufferMask = _bufferMask; // prefetch the buffer mask
         var pos = _dequeuePos; // fetch the current position from where we can dequeue an item
-        var index = pos & bufferMask; // precalculate the index in the buffer for that position
-        var cell = buffer[index]; // fetch the cell by the index
+        var index = pos & _bufferMask; // precalculate the index in the buffer for that position
+        var cellSequence = _buffer[index].Sequence;
         // If its sequence was changed by a producer and wasn't changed by other consumers
         // and we can increment the dequeue position
-        if (cell.Sequence == pos + 1 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
+        if (cellSequence == pos + 1 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
         {
             // read the item
-            result = Volatile.Read(ref cell.Element);
+            result = _buffer[index].Element;
+            _buffer[index].Element = null; // no more reference the dequeue data
+            // result = Interlocked.Exchange(ref _buffer[index].Element, null); // maybe no need use this expensive atomic op, since we don't need ensure atomic here
+
             // update for the next round of the buffer
-            buffer[index] = new Cell(pos + bufferMask + 1, null);
+            Volatile.Write(ref _buffer[index].Sequence, pos + _bufferMask + 1); // release fence
             return true;
         }
 
         // If the queue is empty return false
-        if (cell.Sequence < pos + 1)
+        if (cellSequence < pos + 1)
         {
-            result = default(object);
+            result = null;
             return false;
         }
-
         // repeat the process if other consumer managed to dequeue before us
     } while (true);
 }
+
 ```
 
 ### Benchmarks
@@ -131,125 +133,187 @@ Method | NumberOfThreads |     Median |    StdDev |
 
 _`MPMCQueue` shows worse than `ConcurrentQueue` results on many core and multi socket CPUs systems because `cmpxchg` instruction doesn't scale well, [read more](http://joeduffyblog.com/2009/01/08/some-performance-implications-of-cas-operations/)_
 
-### Assembly (RyuJIT x64, clrjit-v4.6.1586.0)
+### Assembly
 
 `MPMCQueue.NET.MPMCQueue.TryEnqueue(System.Object)`
 
 ```
-00007ffe`162b0d40 57              push    rdi
-00007ffe`162b0d41 56              push    rsi
-00007ffe`162b0d42 55              push    rbp
-00007ffe`162b0d43 53              push    rbx
-00007ffe`162b0d44 4883ec28        sub     rsp,28h
-00007ffe`162b0d48 488b7108        mov     rsi,qword ptr [rcx+8]
-00007ffe`162b0d4c 8b7948          mov     edi,dword ptr [rcx+48h]
-00007ffe`162b0d4f 8b4110          mov     eax,dword ptr [rcx+10h]
-00007ffe`162b0d52 23c7            and     eax,edi
-00007ffe`162b0d54 8bd8            mov     ebx,eax
-00007ffe`162b0d56 8b4608          mov     eax,dword ptr [rsi+8]
-00007ffe`162b0d59 3bd8            cmp     ebx,eax
-00007ffe`162b0d5b 735c            jae     00007ffe`162b0db9
-00007ffe`162b0d5d 4863c3          movsxd  rax,ebx
-00007ffe`162b0d60 48c1e004        shl     rax,4
-00007ffe`162b0d64 4c8d440610      lea     r8,[rsi+rax+10h]
-00007ffe`162b0d69 498bc0          mov     rax,r8
-00007ffe`162b0d6c 8b28            mov     ebp,dword ptr [rax]
-00007ffe`162b0d6e 3bef            cmp     ebp,edi
-00007ffe`162b0d70 7538            jne     00007ffe`162b0daa
-00007ffe`162b0d72 4c8d4948        lea     r9,[rcx+48h]
-00007ffe`162b0d76 448d5701        lea     r10d,[rdi+1]
-00007ffe`162b0d7a 8bc7            mov     eax,edi
-00007ffe`162b0d7c f0450fb111      lock cmpxchg dword ptr [r9],r10d
-00007ffe`162b0d81 3bc7            cmp     eax,edi
-00007ffe`162b0d83 7525            jne     00007ffe`162b0daa
-00007ffe`162b0d85 498d4808        lea     rcx,[r8+8]
-00007ffe`162b0d89 e872305f5f      call    clr!JIT_CheckedWriteBarrier (00007ffe`758a3e00)
-00007ffe`162b0d8e 8d4701          lea     eax,[rdi+1]
-00007ffe`162b0d91 4863d3          movsxd  rdx,ebx
-00007ffe`162b0d94 48c1e204        shl     rdx,4
-00007ffe`162b0d98 89441610        mov     dword ptr [rsi+rdx+10h],eax
-00007ffe`162b0d9c b801000000      mov     eax,1
-00007ffe`162b0da1 4883c428        add     rsp,28h
-00007ffe`162b0da5 5b              pop     rbx
-00007ffe`162b0da6 5d              pop     rbp
-00007ffe`162b0da7 5e              pop     rsi
-00007ffe`162b0da8 5f              pop     rdi
-00007ffe`162b0da9 c3              ret
-00007ffe`162b0daa 3bef            cmp     ebp,edi
-00007ffe`162b0dac 7d9a            jge     00007ffe`162b0d48
-00007ffe`162b0dae 33c0            xor     eax,eax
-00007ffe`162b0db0 4883c428        add     rsp,28h
-00007ffe`162b0db4 5b              pop     rbx
-00007ffe`162b0db5 5d              pop     rbp
-00007ffe`162b0db6 5e              pop     rsi
-00007ffe`162b0db7 5f              pop     rdi
-00007ffe`162b0db8 c3              ret
-00007ffe`162b0db9 e8226ea95f      call    clr!JIT_RngChkFail (00007ffe`75d47be0)
-00007ffe`162b0dbe cc              int     3
+Normal JIT generated code
+MPMCQueue.NET.MPMCQueue.TryDequeue(System.Object ByRef)
+Begin 00007ffb3a770740, size cb
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 41:
+>>> 
+00007ffb`3a790690 57              push    rdi
+00007ffb`3a790691 56              push    rsi
+00007ffb`3a790692 53              push    rbx
+00007ffb`3a790693 4883ec20        sub     rsp,20h
+00007ffb`3a790697 8b7148          mov     esi,dword ptr [rcx+48h]
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 42:
+00007ffb`3a79069a 8bfe            mov     edi,esi
+00007ffb`3a79069c 237910          and     edi,dword ptr [rcx+10h]
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 43:
+00007ffb`3a79069f 488b4108        mov     rax,qword ptr [rcx+8]
+00007ffb`3a7906a3 3b7808          cmp     edi,dword ptr [rax+8]
+00007ffb`3a7906a6 736e            jae     00007ffb`3a790716
+00007ffb`3a7906a8 4c63c7          movsxd  r8,edi
+00007ffb`3a7906ab 49c1e004        shl     r8,4
+00007ffb`3a7906af 428b5c0018      mov     ebx,dword ptr [rax+r8+18h]
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 44:
+00007ffb`3a7906b4 3bde            cmp     ebx,esi
+00007ffb`3a7906b6 7550            jne     00007ffb`3a790708
+00007ffb`3a7906b8 4c8d4148        lea     r8,[rcx+48h]
+00007ffb`3a7906bc 448d4e01        lea     r9d,[rsi+1]
+00007ffb`3a7906c0 8bc6            mov     eax,esi
+00007ffb`3a7906c2 f0450fb108      lock cmpxchg dword ptr [r8],r9d
+00007ffb`3a7906c7 3bc6            cmp     eax,esi
+00007ffb`3a7906c9 753d            jne     00007ffb`3a790708
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 46:
+00007ffb`3a7906cb 488b5908        mov     rbx,qword ptr [rcx+8]
+00007ffb`3a7906cf 488bcb          mov     rcx,rbx
+00007ffb`3a7906d2 8b4108          mov     eax,dword ptr [rcx+8]
+00007ffb`3a7906d5 3bf8            cmp     edi,eax
+00007ffb`3a7906d7 733d            jae     00007ffb`3a790716
+00007ffb`3a7906d9 4863c7          movsxd  rax,edi
+00007ffb`3a7906dc 48c1e004        shl     rax,4
+00007ffb`3a7906e0 488d4c0110      lea     rcx,[rcx+rax+10h]
+00007ffb`3a7906e5 e80637605f      call    clr+0x3df0 (00007ffb`99d93df0) (JitHelp: CORINFO_HELP_ASSIGN_REF)
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 47:
+00007ffb`3a7906ea 4863c7          movsxd  rax,edi
+00007ffb`3a7906ed 48c1e004        shl     rax,4
+00007ffb`3a7906f1 488d440318      lea     rax,[rbx+rax+18h]
+00007ffb`3a7906f6 8d5601          lea     edx,[rsi+1]
+00007ffb`3a7906f9 8910            mov     dword ptr [rax],edx
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 48:
+00007ffb`3a7906fb b801000000      mov     eax,1
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 53:
+00007ffb`3a790700 4883c420        add     rsp,20h
+00007ffb`3a790704 5b              pop     rbx
+00007ffb`3a790705 5e              pop     rsi
+00007ffb`3a790706 5f              pop     rdi
+00007ffb`3a790707 c3              ret
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 51:
+00007ffb`3a790708 3bde            cmp     ebx,esi
+00007ffb`3a79070a 7d8b            jge     00007ffb`3a790697
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 53:
+00007ffb`3a79070c 33c0            xor     eax,eax
+00007ffb`3a79070e 4883c420        add     rsp,20h
+00007ffb`3a790712 5b              pop     rbx
+00007ffb`3a790713 5e              pop     rsi
+00007ffb`3a790714 5f              pop     rdi
+00007ffb`3a790715 c3              ret
 ```
 
 `MPMCQueue.NET.MPMCQueue.TryDequeue(System.Object ByRef)`
 
 ```
-00007ffe`162b0b10 4156            push    r14
-00007ffe`162b0b12 57              push    rdi
-00007ffe`162b0b13 56              push    rsi
-00007ffe`162b0b14 55              push    rbp
-00007ffe`162b0b15 53              push    rbx
-00007ffe`162b0b16 4883ec20        sub     rsp,20h
-00007ffe`162b0b1a 4c8bc2          mov     r8,rdx
-00007ffe`162b0b1d 488b4108        mov     rax,qword ptr [rcx+8]
-00007ffe`162b0b21 8b7110          mov     esi,dword ptr [rcx+10h]
-00007ffe`162b0b24 8bb988000000    mov     edi,dword ptr [rcx+88h]
-00007ffe`162b0b2a 8bd7            mov     edx,edi
-00007ffe`162b0b2c 23d6            and     edx,esi
-00007ffe`162b0b2e 448b4808        mov     r9d,dword ptr [rax+8]
-00007ffe`162b0b32 413bd1          cmp     edx,r9d
-00007ffe`162b0b35 736b            jae     00007ffe`162b0ba2
-00007ffe`162b0b37 4863d2          movsxd  rdx,edx
-00007ffe`162b0b3a 48c1e204        shl     rdx,4
-00007ffe`162b0b3e 488d5c1010      lea     rbx,[rax+rdx+10h]
-00007ffe`162b0b43 488bc3          mov     rax,rbx
-00007ffe`162b0b46 8b28            mov     ebp,dword ptr [rax]
-00007ffe`162b0b48 488b5008        mov     rdx,qword ptr [rax+8]
-00007ffe`162b0b4c 448d7701        lea     r14d,[rdi+1]
-00007ffe`162b0b50 413bee          cmp     ebp,r14d
-00007ffe`162b0b53 7536            jne     00007ffe`162b0b8b
-00007ffe`162b0b55 4c8d8988000000  lea     r9,[rcx+88h]
-00007ffe`162b0b5c 8bc7            mov     eax,edi
-00007ffe`162b0b5e f0450fb131      lock cmpxchg dword ptr [r9],r14d
-00007ffe`162b0b63 3bc7            cmp     eax,edi
-00007ffe`162b0b65 7524            jne     00007ffe`162b0b8b
-00007ffe`162b0b67 498bc8          mov     rcx,r8
-00007ffe`162b0b6a e891325f5f      call    clr!JIT_CheckedWriteBarrier (00007ffe`758a3e00)
-00007ffe`162b0b6f 8d443701        lea     eax,[rdi+rsi+1]
-00007ffe`162b0b73 33d2            xor     edx,edx
-00007ffe`162b0b75 8903            mov     dword ptr [rbx],eax
-00007ffe`162b0b77 48895308        mov     qword ptr [rbx+8],rdx
-00007ffe`162b0b7b b801000000      mov     eax,1
-00007ffe`162b0b80 4883c420        add     rsp,20h
-00007ffe`162b0b84 5b              pop     rbx
-00007ffe`162b0b85 5d              pop     rbp
-00007ffe`162b0b86 5e              pop     rsi
-00007ffe`162b0b87 5f              pop     rdi
-00007ffe`162b0b88 415e            pop     r14
-00007ffe`162b0b8a c3              ret
-00007ffe`162b0b8b 413bee          cmp     ebp,r14d
-00007ffe`162b0b8e 7d8d            jge     00007ffe`162b0b1d
-00007ffe`162b0b90 33c0            xor     eax,eax
-00007ffe`162b0b92 498900          mov     qword ptr [r8],rax
-00007ffe`162b0b95 33c0            xor     eax,eax
-00007ffe`162b0b97 4883c420        add     rsp,20h
-00007ffe`162b0b9b 5b              pop     rbx
-00007ffe`162b0b9c 5d              pop     rbp
-00007ffe`162b0b9d 5e              pop     rsi
-00007ffe`162b0b9e 5f              pop     rdi
-00007ffe`162b0b9f 415e            pop     r14
-00007ffe`162b0ba1 c3              ret
-00007ffe`162b0ba2 e83970a95f      call    clr!JIT_RngChkFail (00007ffe`75d47be0)
-00007ffe`162b0ba7 cc              int     3
+MPMCQueue.NET.MPMCQueue.TryDequeue(System.Object ByRef)
+Begin 00007ffb3a790740, size cb
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 62:
+>>> 
+00007ffb`3a790740 4156            push    r14
+00007ffb`3a790742 57              push    rdi
+00007ffb`3a790743 56              push    rsi
+00007ffb`3a790744 55              push    rbp
+00007ffb`3a790745 53              push    rbx
+00007ffb`3a790746 4883ec20        sub     rsp,20h
+00007ffb`3a79074a 488bf1          mov     rsi,rcx
+00007ffb`3a79074d 488bca          mov     rcx,rdx
+00007ffb`3a790750 8bbe88000000    mov     edi,dword ptr [rsi+88h]
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 63:
+00007ffb`3a790756 8bdf            mov     ebx,edi
+00007ffb`3a790758 235e10          and     ebx,dword ptr [rsi+10h]
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 64:
+00007ffb`3a79075b 488b4608        mov     rax,qword ptr [rsi+8]
+00007ffb`3a79075f 3b5808          cmp     ebx,dword ptr [rax+8]
+00007ffb`3a790762 0f839d000000    jae     00007ffb`3a790805
+00007ffb`3a790768 4863d3          movsxd  rdx,ebx
+00007ffb`3a79076b 48c1e204        shl     rdx,4
+00007ffb`3a79076f 8b6c1018        mov     ebp,dword ptr [rax+rdx+18h]
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 65:
+00007ffb`3a790773 448d7701        lea     r14d,[rdi+1]
+00007ffb`3a790777 413bee          cmp     ebp,r14d
+00007ffb`3a79077a 756e            jne     00007ffb`3a7907ea
+00007ffb`3a79077c 488d9688000000  lea     rdx,[rsi+88h]
+00007ffb`3a790783 8bc7            mov     eax,edi
+00007ffb`3a790785 f0440fb132      lock cmpxchg dword ptr [rdx],r14d
+00007ffb`3a79078a 3bc7            cmp     eax,edi
+00007ffb`3a79078c 755c            jne     00007ffb`3a7907ea
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 67:
+00007ffb`3a79078e 488b5608        mov     rdx,qword ptr [rsi+8]
+00007ffb`3a790792 3b5a08          cmp     ebx,dword ptr [rdx+8]
+00007ffb`3a790795 736e            jae     00007ffb`3a790805
+00007ffb`3a790797 4863c3          movsxd  rax,ebx
+00007ffb`3a79079a 48c1e004        shl     rax,4
+00007ffb`3a79079e 488b540210      mov     rdx,qword ptr [rdx+rax+10h]
+00007ffb`3a7907a3 e81836605f      call    clr+0x3dc0 (00007ffb`99d93dc0) (JitHelp: CORINFO_HELP_CHECKED_ASSIGN_REF)
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 68:
+00007ffb`3a7907a8 488b4608        mov     rax,qword ptr [rsi+8]
+00007ffb`3a7907ac 488bd0          mov     rdx,rax
+00007ffb`3a7907af 8b4a08          mov     ecx,dword ptr [rdx+8]
+00007ffb`3a7907b2 3bd9            cmp     ebx,ecx
+00007ffb`3a7907b4 734f            jae     00007ffb`3a790805
+00007ffb`3a7907b6 4863cb          movsxd  rcx,ebx
+00007ffb`3a7907b9 48c1e104        shl     rcx,4
+00007ffb`3a7907bd 4533c0          xor     r8d,r8d
+00007ffb`3a7907c0 4c89440a10      mov     qword ptr [rdx+rcx+10h],r8
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 70:
+00007ffb`3a7907c5 4863d3          movsxd  rdx,ebx
+00007ffb`3a7907c8 48c1e204        shl     rdx,4
+00007ffb`3a7907cc 488d441018      lea     rax,[rax+rdx+18h]
+00007ffb`3a7907d1 8b5610          mov     edx,dword ptr [rsi+10h]
+00007ffb`3a7907d4 8d541701        lea     edx,[rdi+rdx+1]
+00007ffb`3a7907d8 8910            mov     dword ptr [rax],edx
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 71:
+00007ffb`3a7907da b801000000      mov     eax,1
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 77:
+00007ffb`3a7907df 4883c420        add     rsp,20h
+00007ffb`3a7907e3 5b              pop     rbx
+00007ffb`3a7907e4 5d              pop     rbp
+00007ffb`3a7907e5 5e              pop     rsi
+00007ffb`3a7907e6 5f              pop     rdi
+00007ffb`3a7907e7 415e            pop     r14
+00007ffb`3a7907e9 c3              ret
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 74:
+00007ffb`3a7907ea 413bee          cmp     ebp,r14d
+00007ffb`3a7907ed 0f8d5dffffff    jge     00007ffb`3a790750
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 76:
+00007ffb`3a7907f3 33c0            xor     eax,eax
+00007ffb`3a7907f5 488901          mov     qword ptr [rcx],rax
+
+E:\git\MPMCQueue.NET\src\MPMCQueue.NET\MPMCQueue.cs @ 77:
+00007ffb`3a7907f8 33c0            xor     eax,eax
+00007ffb`3a7907fa 4883c420        add     rsp,20h
+00007ffb`3a7907fe 5b              pop     rbx
+00007ffb`3a7907ff 5d              pop     rbp
+00007ffb`3a790800 5e              pop     rsi
+00007ffb`3a790801 5f              pop     rdi
+00007ffb`3a790802 415e            pop     r14
+00007ffb`3a790804 c3              ret
+
 ```
 
 
   [1024-mpmc]: http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
   [false-sharing]: http://mechanical-sympathy.blogspot.lt/2011/07/false-sharing.html
+  [memory-barriers-in-dot-net]: http://afana.me/archive/2015/07/10/memory-barriers-in-dot-net.aspx/

@@ -38,18 +38,17 @@ namespace MPMCQueue.NET
         {
             do
             {
-                var buffer = _buffer;
                 var pos = _enqueuePos;
                 var index = pos & _bufferMask;
-                var cell = buffer[index];
-                if (cell.Sequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
+                var cellSequence = _buffer[index].Sequence;
+                if (cellSequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                 {
-                    Volatile.Write(ref buffer[index].Element, item);
-                    buffer[index].Sequence = pos + 1;
+                    _buffer[index].Element = item;
+                    Volatile.Write(ref _buffer[index].Sequence, pos + 1); // release fence
                     return true;
                 }
 
-                if (cell.Sequence < pos)
+                if (cellSequence < pos)
                 {
                     return false;
                 }
@@ -60,38 +59,35 @@ namespace MPMCQueue.NET
         {
             do
             {
-                var buffer = _buffer;
-                var bufferMask = _bufferMask;
                 var pos = _dequeuePos;
-                var index = pos & bufferMask;
-                var cell = buffer[index];
-                if (cell.Sequence == pos + 1 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
+                var index = pos & _bufferMask;
+                var cellSequence = _buffer[index].Sequence;
+                if (cellSequence == pos + 1 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
                 {
-                    result = Volatile.Read(ref cell.Element);
-                    buffer[index] = new Cell(pos + bufferMask + 1, null);
+                    result = _buffer[index].Element;
+                    _buffer[index].Element = null; // no more reference the dequeue data
+                    // result = Interlocked.Exchange(ref _buffer[index].Element, null); // maybe no need use this expensive atomic op, since we don't need ensure atomic here
+                    Volatile.Write(ref _buffer[index].Sequence, pos + _bufferMask + 1); // release fence
                     return true;
                 }
 
-                if (cell.Sequence < pos + 1)
+                if (cellSequence < pos + 1)
                 {
-                    result = default(object);
+                    result = null;
                     return false;
                 }
             } while (true);
         }
 
-        [StructLayout(LayoutKind.Explicit, Size = 16, CharSet = CharSet.Ansi)]
         private struct Cell
         {
-            [FieldOffset(0)]
             public int Sequence;
-            [FieldOffset(8)]
             public object Element;
 
             public Cell(int sequence, object element)
             {
-                Sequence = sequence;
                 Element = element;
+                Sequence = sequence;
             }
         }
     }
