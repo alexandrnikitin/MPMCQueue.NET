@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace MPMCQueue.NET
 {
