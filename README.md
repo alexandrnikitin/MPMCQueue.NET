@@ -3,6 +3,8 @@
 
 Bounded multiple producers multiple consumers queue for .NET
 
+**Note: `ConcurrentQueue<T>` uses this algorithm since .NET Core and .NET >5.0. Please use that instead. Unless you want to modify this implementation for you needs, e.g. MPSC, SCMP.**
+
 ### Overview
 This is an attempt to port [the famous Bounded MPMC queue algorithm by Dmitry Vyukov][1024-mpmc] to .NET. All credit goes to Dmitry Vyukov. I let myself quote the description:
 
