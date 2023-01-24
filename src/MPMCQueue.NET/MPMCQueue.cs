@@ -42,14 +42,15 @@ namespace MPMCQueue.NET
                 var pos = _enqueuePos;
                 var index = pos & _bufferMask;
                 var cell = buffer[index];
-                if (cell.Sequence == pos && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
+                var diff = cell.Sequence - pos;
+                if (diff == 0 && Interlocked.CompareExchange(ref _enqueuePos, pos + 1, pos) == pos)
                 {
                     buffer[index].Element = item;
                     Volatile.Write(ref buffer[index].Sequence, pos + 1);
                     return true;
                 }
 
-                if (cell.Sequence < pos)
+                if (diff < 0)
                 {
                     return false;
                 }
@@ -65,7 +66,8 @@ namespace MPMCQueue.NET
                 var pos = _dequeuePos;
                 var index = pos & bufferMask;
                 var cell = buffer[index];
-                if (cell.Sequence == pos + 1 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
+                var diff = cell.Sequence - (pos + 1);
+                if (diff == 0 && Interlocked.CompareExchange(ref _dequeuePos, pos + 1, pos) == pos)
                 {
                     result = cell.Element;
                     buffer[index].Element = null;
@@ -73,7 +75,7 @@ namespace MPMCQueue.NET
                     return true;
                 }
 
-                if (cell.Sequence < pos + 1)
+                if (diff < 0)
                 {
                     result = default(object);
                     return false;
